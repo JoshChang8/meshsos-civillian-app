@@ -1,0 +1,328 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, TextInput, ScrollView, SafeAreaView, TouchableOpacity,
+  StyleSheet, KeyboardAvoidingView, Platform, Alert,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { colors, radius, spacing } from '@/constants/design';
+import { SupplyType, PeopleCount, SupplyRequest, SUPPLY_TYPE_EMOJI, SUPPLY_TYPE_LABELS } from '@/types';
+import { enqueue, saveDraft, clearDraft } from '@/services/messageQueue';
+import { SupplyChips } from '@/components/request/SupplyChips';
+import { PeopleCounter } from '@/components/request/PeopleCounter';
+import { LocationField } from '@/components/request/LocationField';
+import { SectionLabel } from '@/components/ui/SectionLabel';
+
+function generateId(): string {
+  return `req-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+// ─── Summary Box ─────────────────────────────────────────────────────────────
+
+interface SummaryBoxProps {
+  supplyTypes: SupplyType[];
+  people: PeopleCount;
+  additionalInfo: string;
+  hasLocation: boolean;
+}
+
+function SummaryBox({ supplyTypes, people, additionalInfo, hasLocation }: SummaryBoxProps) {
+  const totalPeople = people.adults + people.children + people.elderly;
+
+  return (
+    <View style={summaryStyles.box}>
+      <Text style={summaryStyles.label}>Review your request</Text>
+      <View style={summaryStyles.chips}>
+        {supplyTypes.map((t) => (
+          <View key={t} style={summaryStyles.chip}>
+            <Text style={summaryStyles.chipText}>
+              {SUPPLY_TYPE_EMOJI[t]} {SUPPLY_TYPE_LABELS[t]}
+            </Text>
+          </View>
+        ))}
+        {totalPeople > 0 && (
+          <View style={summaryStyles.chip}>
+            <Text style={summaryStyles.chipText}>
+              {totalPeople} {totalPeople === 1 ? 'person' : 'people'}
+            </Text>
+          </View>
+        )}
+        {hasLocation && (
+          <View style={summaryStyles.chip}>
+            <Text style={summaryStyles.chipText}>📍 Located</Text>
+          </View>
+        )}
+      </View>
+      {additionalInfo.trim().length > 0 && (
+        <Text style={summaryStyles.notes} numberOfLines={2}>
+          {additionalInfo.trim()}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
+export default function RequestScreen() {
+  const router = useRouter();
+
+  const [supplyTypes, setSupplyTypes] = useState<SupplyType[]>([]);
+  const [people, setPeople] = useState<PeopleCount>({ adults: 1, children: 0, elderly: 0 });
+  const [additionalInfo, setAdditionalInfo] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const autosaveDraft = useCallback(() => {
+    saveDraft({ supplyTypes, people, additionalInfo, latitude, longitude });
+  }, [supplyTypes, people, additionalInfo, latitude, longitude]);
+
+  const showAdditionalInfo =
+    supplyTypes.includes('medical') || supplyTypes.includes('other');
+
+  const showSummary = supplyTypes.length > 0;
+
+  async function handleSubmit() {
+    if (supplyTypes.length === 0) {
+      Alert.alert('Missing info', 'Please select at least one supply type.');
+      return;
+    }
+
+    setSubmitting(true);
+
+    const now = Date.now();
+    const request: SupplyRequest = {
+      id: generateId(),
+      createdAt: now,
+      updatedAt: now,
+      supplyTypes,
+      people,
+      additionalInfo,
+      latitude,
+      longitude,
+      status: 'pending',
+      retryCount: 0,
+    };
+
+    await enqueue(request);
+    await clearDraft();
+
+    // Reset all form fields so the next person starts fresh
+    setSupplyTypes([]);
+    setPeople({ adults: 1, children: 0, elderly: 0 });
+    setAdditionalInfo('');
+    setLatitude(null);
+    setLongitude(null);
+
+    setSubmitting(false);
+    router.push('/(tabs)/status');
+  }
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <Text style={styles.title}>Supply Request</Text>
+          </View>
+
+          <View style={styles.form}>
+            {/* Supply types */}
+            <View style={styles.group}>
+              <SupplyChips
+                selected={supplyTypes}
+                onChange={(v) => { setSupplyTypes(v); autosaveDraft(); }}
+              />
+            </View>
+
+            {/* People count */}
+            <View style={styles.group}>
+              <PeopleCounter
+                value={people}
+                onChange={(v) => { setPeople(v); autosaveDraft(); }}
+              />
+            </View>
+
+            {/* Additional info — only for medical or other */}
+            {showAdditionalInfo && (
+              <View style={styles.group}>
+                <SectionLabel>Additional information</SectionLabel>
+                <TextInput
+                  style={styles.textarea}
+                  value={additionalInfo}
+                  onChangeText={(v) => { setAdditionalInfo(v); autosaveDraft(); }}
+                  placeholder="Describe your situation, medical conditions, access difficulties…"
+                  placeholderTextColor={colors.textMuted}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            )}
+
+            {/* Location */}
+            <View style={styles.group}>
+              <LocationField
+                latitude={latitude}
+                longitude={longitude}
+                onLocationCaptured={(lat, lon) => { setLatitude(lat); setLongitude(lon); autosaveDraft(); }}
+              />
+            </View>
+          </View>
+
+          {/* Summary box — shown once supply types are selected */}
+          {showSummary && (
+            <SummaryBox
+              supplyTypes={supplyTypes}
+              people={people}
+              additionalInfo={additionalInfo}
+              hasLocation={latitude !== null && longitude !== null}
+            />
+          )}
+
+          {/* Submit */}
+          <TouchableOpacity
+            style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+            onPress={handleSubmit}
+            disabled={submitting}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.submitIcon}>📡</Text>
+            <Text style={styles.submitText}>
+              {submitting ? 'Sending…' : 'Send via Mesh Network'}
+            </Text>
+          </TouchableOpacity>
+
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  scroll: {
+    flex: 1,
+  },
+  header: {
+    padding: spacing.lg,
+    paddingBottom: 0,
+  },
+  backBtn: {
+    fontSize: 13,
+    color: colors.accent,
+    marginBottom: 6,
+    fontFamily: 'DM Sans',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+    letterSpacing: -0.4,
+    fontFamily: 'DM Sans',
+  },
+  subtitle: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 3,
+    lineHeight: 18,
+    fontFamily: 'DM Sans',
+  },
+  form: {
+    padding: spacing.lg,
+    gap: spacing.lg,
+  },
+  group: {
+    gap: 6,
+  },
+  textarea: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    padding: 11,
+    fontSize: 13,
+    color: colors.text,
+    fontFamily: 'DM Sans',
+    height: 80,
+  },
+  submitBtn: {
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.accent2,
+    borderRadius: radius.sm,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  submitBtnDisabled: {
+    opacity: 0.6,
+  },
+  submitIcon: {
+    fontSize: 16,
+  },
+  submitText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'white',
+    fontFamily: 'DM Sans',
+  },
+  relayInfo: {
+    textAlign: 'center',
+    fontSize: 10,
+    color: colors.textMuted,
+    padding: spacing.lg,
+    lineHeight: 16,
+    fontFamily: 'DM Mono',
+  },
+});
+
+const summaryStyles = StyleSheet.create({
+  box: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    padding: 12,
+    gap: 6,
+  },
+  label: {
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    color: colors.textMuted,
+    fontFamily: 'DM Sans',
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
+  chip: {
+    backgroundColor: colors.accentDim,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.2)',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  chipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.accent,
+    fontFamily: 'DM Sans',
+  },
+  notes: {
+    fontSize: 11,
+    color: colors.textMuted,
+    lineHeight: 16,
+    fontFamily: 'DM Sans',
+  },
+});
