@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { colors, radius, spacing } from '@/constants/design';
+import { radius, spacing } from '@/constants/design';
 import { SupplyRequest, RequestStatus } from '@/types';
+import { useTheme } from '@/hooks/useTheme';
+import { ThemeColors } from '@/constants/themes';
 
 interface MessageTimelineProps {
   request: SupplyRequest;
@@ -10,7 +12,6 @@ interface MessageTimelineProps {
 interface TimelineStep {
   key: RequestStatus;
   label: string;
-  subLabel?: string;
   icon: string;
 }
 
@@ -27,7 +28,7 @@ function getStepState(step: TimelineStep, request: SupplyRequest): 'done' | 'act
   const stepIdx = STATUS_ORDER.indexOf(step.key);
 
   if (request.status === 'failed') {
-    if (step.key === 'sent') return 'active'; // failed at send
+    if (step.key === 'sent') return 'active';
     return 'pending';
   }
 
@@ -36,7 +37,77 @@ function getStepState(step: TimelineStep, request: SupplyRequest): 'done' | 'act
   return 'pending';
 }
 
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { paddingVertical: spacing.xs },
+    pendingWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: spacing.sm,
+    },
+    pendingText: {
+      fontSize: 14,
+      color: colors.textMuted,
+      fontFamily: 'DM Sans',
+    },
+    stepRow: { flexDirection: 'row', gap: spacing.md, minHeight: 36 },
+    iconCol: { alignItems: 'center', width: 24 },
+    dot: {
+      width: 24,
+      height: 24,
+      borderRadius: radius.full,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    dotDone: { backgroundColor: colors.green, borderColor: colors.green },
+    dotActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+    dotFailed: { backgroundColor: colors.red, borderColor: colors.red },
+    dotEmpty: {
+      width: 8,
+      height: 8,
+      borderRadius: radius.full,
+      backgroundColor: colors.border,
+    },
+    dotIcon: { fontSize: 11, fontWeight: '700', color: 'white' },
+    line: {
+      width: 1.5,
+      flex: 1,
+      backgroundColor: colors.border,
+      marginVertical: 2,
+    },
+    lineDone: { backgroundColor: colors.green },
+    textCol: { flex: 1, paddingTop: 3, paddingBottom: 12 },
+    stepLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textMuted,
+      fontFamily: 'DM Sans',
+    },
+    stepLabelDone: { color: colors.text },
+    stepLabelPending: { color: colors.textMuted, opacity: 0.5 },
+    timestamp: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+      fontFamily: 'DM Mono',
+    },
+    failedLabel: {
+      fontSize: 12,
+      color: colors.red,
+      marginTop: 2,
+      fontFamily: 'DM Sans',
+    },
+  });
+}
+
 export function MessageTimeline({ request }: MessageTimelineProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const isPending = request.status === 'pending';
   const isFailed = request.status === 'failed';
 
@@ -59,7 +130,6 @@ export function MessageTimeline({ request }: MessageTimelineProps) {
 
         return (
           <View key={step.key} style={styles.stepRow}>
-            {/* Icon column */}
             <View style={styles.iconCol}>
               <View
                 style={[
@@ -81,7 +151,6 @@ export function MessageTimeline({ request }: MessageTimelineProps) {
               )}
             </View>
 
-            {/* Text column */}
             <View style={styles.textCol}>
               <Text style={[
                 styles.stepLabel,
@@ -94,19 +163,13 @@ export function MessageTimeline({ request }: MessageTimelineProps) {
                   : ''}
               </Text>
               {state === 'done' && step.key === 'sent' && request.sentAt && (
-                <Text style={styles.timestamp}>
-                  {new Date(request.sentAt).toLocaleTimeString()}
-                </Text>
+                <Text style={styles.timestamp}>{new Date(request.sentAt).toLocaleTimeString()}</Text>
               )}
               {state === 'done' && step.key === 'relayed' && request.relayedAt && (
-                <Text style={styles.timestamp}>
-                  {new Date(request.relayedAt).toLocaleTimeString()}
-                </Text>
+                <Text style={styles.timestamp}>{new Date(request.relayedAt).toLocaleTimeString()}</Text>
               )}
               {state === 'done' && step.key === 'received' && request.receivedAt && (
-                <Text style={styles.timestamp}>
-                  {new Date(request.receivedAt).toLocaleTimeString()}
-                </Text>
+                <Text style={styles.timestamp}>{new Date(request.receivedAt).toLocaleTimeString()}</Text>
               )}
               {isFailed && step.key === 'sent' && (
                 <Text style={styles.failedLabel}>Failed · {request.retryCount} attempt{request.retryCount !== 1 ? 's' : ''}</Text>
@@ -118,102 +181,3 @@ export function MessageTimeline({ request }: MessageTimelineProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: spacing.xs,
-  },
-  pendingWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: spacing.sm,
-  },
-  pendingText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontFamily: 'DM Sans',
-  },
-  stepRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    minHeight: 36,
-  },
-  iconCol: {
-    alignItems: 'center',
-    width: 24,
-  },
-  dot: {
-    width: 24,
-    height: 24,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  dotDone: {
-    backgroundColor: colors.green,
-    borderColor: colors.green,
-  },
-  dotActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  dotFailed: {
-    backgroundColor: colors.red,
-    borderColor: colors.red,
-  },
-  dotEmpty: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.full,
-    backgroundColor: colors.border,
-  },
-  dotIcon: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: 'white',
-  },
-  line: {
-    width: 1.5,
-    flex: 1,
-    backgroundColor: colors.border,
-    marginVertical: 2,
-  },
-  lineDone: {
-    backgroundColor: colors.green,
-  },
-  textCol: {
-    flex: 1,
-    paddingTop: 3,
-    paddingBottom: 12,
-  },
-  stepLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textMuted,
-    fontFamily: 'DM Sans',
-  },
-  stepLabelDone: {
-    color: colors.text,
-  },
-  stepLabelPending: {
-    color: colors.textMuted,
-    opacity: 0.5,
-  },
-  timestamp: {
-    fontSize: 10,
-    color: colors.textMuted,
-    marginTop: 2,
-    fontFamily: 'DM Mono',
-  },
-  failedLabel: {
-    fontSize: 10,
-    color: colors.red,
-    marginTop: 2,
-    fontFamily: 'DM Sans',
-  },
-});

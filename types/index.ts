@@ -53,6 +53,19 @@ export interface NetworkStatus {
 
 export type SupplyType = 'water' | 'food' | 'medical' | 'shelter' | 'supplies' | 'other';
 
+export type MedicalConditionType = 'injury' | 'chronic' | 'disability' | 'medication' | 'mental' | 'other';
+
+export interface MedicalDetail {
+  conditionType: MedicalConditionType | null;
+  specificNeed: string;
+}
+
+export interface MedicalDetailsState {
+  adults: MedicalDetail | null;
+  children: MedicalDetail | null;
+  elderly: MedicalDetail | null;
+}
+
 export type UrgencyLevel = 'low' | 'medium' | 'high';
 
 export type RequestStatus =
@@ -78,6 +91,9 @@ export interface SupplyRequest {
   supplyTypes: SupplyType[];
   people: PeopleCount;
   additionalInfo: string;
+
+  // Medical details (populated when medical supply type is selected)
+  medicalDetails?: MedicalDetailsState;
 
   // Auto-captured
   latitude: number | null;
@@ -125,8 +141,8 @@ export const SUPPLY_TYPE_LABELS: Record<SupplyType, string> = {
 
 export const SUPPLY_TYPE_EMOJI: Record<SupplyType, string> = {
   water: '💧',
-  food: '🍱',
-  medical: '🩹',
+  food: '🍎',
+  medical: '🧰',
   shelter: '🏠',
   supplies: '📦',
   other: '✏️',

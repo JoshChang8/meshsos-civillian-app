@@ -5,8 +5,8 @@ import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSa
 import { DMMono_400Regular, DMMono_500Medium } from '@expo-google-fonts/dm-mono';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { colors } from '@/constants/design';
 import { bleService } from '@/services/ble';
+import { useTheme } from '@/hooks/useTheme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -19,6 +19,8 @@ export default function RootLayout() {
     'DM Mono': DMMono_400Regular,
     'DM Mono Medium': DMMono_500Medium,
   });
+
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -34,7 +36,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar style="light" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
       </Stack>

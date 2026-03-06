@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, spacing } from '@/constants/design';
+import { spacing } from '@/constants/design';
 import { MeshNode } from '@/types';
 import { getSignalBars } from '@/constants/ble';
 import { Card } from '@/components/ui/Card';
+import { useTheme } from '@/hooks/useTheme';
+import { ThemeColors } from '@/constants/themes';
 
 interface NodeDetailListProps {
   nodes: MeshNode[];
@@ -18,14 +20,6 @@ const NODE_EMOJI: Record<string, string> = {
   gateway: '🏛️',
 };
 
-const NODE_COLOR: Record<string, string> = {
-  online:  colors.green,
-  weak:    colors.yellow,
-  offline: colors.red,
-  gateway: colors.gateway,
-};
-
-// Reduced opacity for degraded/offline nodes
 const NODE_EMOJI_OPACITY: Record<string, number> = {
   online:  1.0,
   weak:    0.5,
@@ -41,10 +35,61 @@ function formatLastSeen(lastSeenAt?: number): string {
   return `${diffMin} min ago`;
 }
 
-function SignalBars({ rssi, status }: { rssi: number; status: string }) {
-  const filled = getSignalBars(rssi);
-  const barColor = NODE_COLOR[status] ?? colors.green;
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { padding: spacing.lg },
+    sectionTitle: {
+      fontSize: 11,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      color: colors.textMuted,
+      marginBottom: spacing.md,
+      fontFamily: 'DM Sans',
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      padding: spacing.md,
+    },
+    rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+    emoji: { fontSize: 16, width: 28, textAlign: 'center' },
+    info: { flex: 1, gap: 2 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+    connectedBadge: {
+      backgroundColor: colors.accentDim,
+      borderWidth: 1,
+      borderColor: colors.greenBorder,
+      borderRadius: 4,
+      paddingHorizontal: 5,
+      paddingVertical: 1,
+    },
+    connectedBadgeText: {
+      fontSize: 9,
+      fontWeight: '700',
+      color: colors.accent,
+      fontFamily: 'DM Sans',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    chevron: { fontSize: 20, color: colors.textMuted, marginLeft: 4 },
+    name: { fontSize: 13, fontWeight: '600', fontFamily: 'DM Sans' },
+    meta: { fontSize: 11, color: colors.textMuted, fontFamily: 'DM Mono' },
+    updated: { fontSize: 10, color: colors.textMuted, fontFamily: 'DM Sans', fontStyle: 'italic' },
+    updatedOffline: { color: colors.red },
+    barsWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+    bar: { width: 4, borderRadius: 2 },
+  });
+}
 
+function SignalBars({ rssi, styles, barColor, borderColor }: {
+  rssi: number;
+  styles: ReturnType<typeof makeStyles>;
+  barColor: string;
+  borderColor: string;
+}) {
+  const filled = getSignalBars(rssi);
   return (
     <View style={styles.barsWrap}>
       {[6, 9, 12, 15].map((h, i) => (
@@ -53,7 +98,7 @@ function SignalBars({ rssi, status }: { rssi: number; status: string }) {
           style={[
             styles.bar,
             { height: h },
-            i < filled ? { backgroundColor: barColor } : { backgroundColor: colors.border },
+            i < filled ? { backgroundColor: barColor } : { backgroundColor: borderColor },
           ]}
         />
       ))}
@@ -62,6 +107,16 @@ function SignalBars({ rssi, status }: { rssi: number; status: string }) {
 }
 
 export function NodeDetailList({ nodes, connectedNodeId, onNodePress }: NodeDetailListProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
+  const NODE_COLOR: Record<string, string> = {
+    online:  colors.green,
+    weak:    colors.yellow,
+    offline: colors.red,
+    gateway: colors.gateway,
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Node Details</Text>
@@ -69,7 +124,7 @@ export function NodeDetailList({ nodes, connectedNodeId, onNodePress }: NodeDeta
         {nodes.map((node, i) => {
           const isOffline = node.status === 'offline';
           const isConnected = node.nodeId === connectedNodeId;
-          const hasCoordsq = node.latitude != null && node.longitude != null;
+          const hasCoords = node.latitude != null && node.longitude != null;
           const nameColor =
             node.status === 'gateway'
               ? colors.gateway
@@ -82,15 +137,10 @@ export function NodeDetailList({ nodes, connectedNodeId, onNodePress }: NodeDeta
             <TouchableOpacity
               key={node.nodeId}
               style={[styles.row, i < nodes.length - 1 && styles.rowBorder]}
-              onPress={() => hasCoordsq && onNodePress?.(node)}
-              activeOpacity={hasCoordsq ? 0.6 : 1}
+              onPress={() => hasCoords && onNodePress?.(node)}
+              activeOpacity={hasCoords ? 0.6 : 1}
             >
-              <Text
-                style={[
-                  styles.emoji,
-                  { opacity: NODE_EMOJI_OPACITY[node.status] ?? 1 },
-                ]}
-              >
+              <Text style={[styles.emoji, { opacity: NODE_EMOJI_OPACITY[node.status] ?? 1 }]}>
                 {NODE_EMOJI[node.status]}
               </Text>
               <View style={styles.info}>
@@ -112,8 +162,13 @@ export function NodeDetailList({ nodes, connectedNodeId, onNodePress }: NodeDeta
                   {isOffline ? `Last seen ${lastSeenStr}` : `Updated ${lastSeenStr}`}
                 </Text>
               </View>
-              <SignalBars rssi={node.rssi} status={node.status} />
-              {hasCoordsq && <Text style={styles.chevron}>›</Text>}
+              <SignalBars
+                rssi={node.rssi}
+                styles={styles}
+                barColor={NODE_COLOR[node.status] ?? colors.green}
+                borderColor={colors.border}
+              />
+              {hasCoords && <Text style={styles.chevron}>›</Text>}
             </TouchableOpacity>
           );
         })}
@@ -121,92 +176,3 @@ export function NodeDetailList({ nodes, connectedNodeId, onNodePress }: NodeDeta
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    color: colors.textMuted,
-    marginBottom: spacing.md,
-    fontFamily: 'DM Sans',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    padding: spacing.md,
-  },
-  rowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  emoji: {
-    fontSize: 16,
-    width: 28,
-    textAlign: 'center',
-  },
-  info: {
-    flex: 1,
-    gap: 2,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  connectedBadge: {
-    backgroundColor: colors.accentDim,
-    borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.25)',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  connectedBadgeText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: colors.accent,
-    fontFamily: 'DM Sans',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  chevron: {
-    fontSize: 20,
-    color: colors.textMuted,
-    marginLeft: 4,
-  },
-  name: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'DM Sans',
-  },
-  meta: {
-    fontSize: 10,
-    color: colors.textMuted,
-    fontFamily: 'DM Mono',
-  },
-  updated: {
-    fontSize: 9,
-    color: colors.textMuted,
-    fontFamily: 'DM Sans',
-    fontStyle: 'italic',
-  },
-  updatedOffline: {
-    color: colors.red,
-  },
-  barsWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  bar: {
-    width: 4,
-    borderRadius: 2,
-  },
-});

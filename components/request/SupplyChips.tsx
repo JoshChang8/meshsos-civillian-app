@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, radius, spacing } from '@/constants/design';
+import { radius } from '@/constants/design';
 import { SupplyType, SUPPLY_TYPE_LABELS, SUPPLY_TYPE_EMOJI } from '@/types';
 import { SectionLabel } from '@/components/ui/SectionLabel';
+import { useTheme } from '@/hooks/useTheme';
+import { ThemeColors } from '@/constants/themes';
 
 const ALL_TYPES: SupplyType[] = ['water', 'food', 'medical', 'other'];
 
@@ -11,7 +13,48 @@ interface SupplyChipsProps {
   onChange: (types: SupplyType[]) => void;
 }
 
+function makeStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: { gap: 6 },
+    hint: {
+      fontWeight: '400',
+      textTransform: 'none',
+      letterSpacing: 0,
+      fontSize: 12,
+      color: colors.textMuted,
+    },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: radius.sm,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      width: '47%',
+    },
+    chipSelected: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accentDim,
+    },
+    chipEmoji: { fontSize: 16 },
+    chipLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text,
+      fontFamily: 'DM Sans',
+    },
+    chipLabelSelected: { color: colors.accent },
+  });
+}
+
 export function SupplyChips({ selected, onChange }: SupplyChipsProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   function toggle(type: SupplyType) {
     if (selected.includes(type)) {
       onChange(selected.filter((t) => t !== type));
@@ -47,49 +90,3 @@ export function SupplyChips({ selected, onChange }: SupplyChipsProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: 6,
-  },
-  hint: {
-    fontWeight: '400',
-    textTransform: 'none',
-    letterSpacing: 0,
-    fontSize: 10,
-    color: colors.textMuted,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.sm,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    width: '47%',
-  },
-  chipSelected: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accentDim,
-  },
-  chipEmoji: {
-    fontSize: 16,
-  },
-  chipLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.text,
-    fontFamily: 'DM Sans',
-  },
-  chipLabelSelected: {
-    color: colors.accent,
-  },
-});
