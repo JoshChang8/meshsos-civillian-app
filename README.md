@@ -8,7 +8,7 @@ A React Native mobile app for civilians to send emergency supply requests over a
 
 - **Bluetooth pairing** — scans for and connects to a nearby LoRa node over BLE
 - **Live mesh map** — shows all nodes in the network on Apple Maps with real GPS positions, signal-strength color coding, and hop links
-- **Supply requests** — form to request water, food, medical supplies, shelter, and more, with GPS auto-capture and people count
+- **Supply requests** — form to request water, food, medical supplies, shelter, and more; includes per-age-group medical details, GPS auto-capture, and people count
 - **Message inbox** — receives updates and instructions from emergency responders relayed back through the mesh
 - **Offline-first queue** — requests are persisted locally and retried automatically when a node connection is restored
 
@@ -126,23 +126,41 @@ A full rebuild (`npx expo run:ios`) is only needed when you:
 
 ## Development Mode (Mock BLE)
 
-The app ships with a BLE mock mode so you can develop and test without real LoRa hardware.
+The app ships with a mock mode so you can develop and test the full UI without real LoRa hardware. Mock mode is **on by default**.
 
-**File:** `services/ble.ts`, line 1:
+### Running in mock mode (default)
 
-```ts
-const DEV_MOCK = true;   // ← set to false for real hardware
+```bash
+npm run ios
 ```
 
-When `DEV_MOCK = true`:
-- `startScan()` simulates a 2-second scan, then connects with mock node and network data
-- Five mock nodes appear on the map around San Francisco with varying signal strengths
-- RSSI drifts slightly every 3 seconds for realism
-- Three historical messages are pre-populated in the inbox
-- New messages appear at 20s and 40s after connect
-- `sendRequest()` simulates a relay ACK after 3s and a gateway receipt ACK after 8s
+No hardware required. The app auto-connects after a 2-second simulated scan.
 
-Set `DEV_MOCK = false` and update `constants/ble.ts` with your hardware's GATT service and characteristic UUIDs to connect to real LoRa nodes.
+### Running with real LoRa hardware
+
+```bash
+EXPO_PUBLIC_MOCK_MODE=false npm run ios
+```
+
+Requires a physical iOS device with Bluetooth and a MeshSOS LoRa node within range.
+
+### What mock mode simulates
+
+- `startScan()` — 2-second scan delay, then connects with a mock node and network
+- Five mock nodes placed around your real GPS location with varying signal strengths
+- RSSI drifts slightly every 3 seconds for realism
+- Three historical messages pre-populated in the inbox on connect
+- New messages arrive at 20s and 40s after connect
+- `sendRequest()` — relay ACK after 3s, gateway receipt ACK after 8s
+
+### How it works
+
+| File | Purpose |
+|---|---|
+| `config.ts` | `MOCK_MODE` flag — reads `EXPO_PUBLIC_MOCK_MODE` env var, defaults to `true` |
+| `services/mockBle.ts` | `MockBLEService` — all mock logic, no BLE library dependency |
+| `services/ble.ts` | `BLEService` — real BLE only; exports whichever service `MOCK_MODE` selects |
+| `services/bleInterface.ts` | `IBLEService` interface — contract both services implement |
 
 ---
 
@@ -180,9 +198,13 @@ components/
     SectionLabel.tsx       Uppercase section heading
 
 services/
-  ble.ts                   BLE manager — scan, connect, GATT, mock mode
+  ble.ts                   Real BLE manager — scan, connect, GATT; exports bleService
+  mockBle.ts               MockBLEService — full simulation, no hardware needed
+  bleInterface.ts          IBLEService interface — contract for all transport implementations
   location.ts              One-shot GPS via expo-location
   messageQueue.ts          SQLite persist, enqueue, flush, retry
+
+config.ts                  MOCK_MODE flag (env var override: EXPO_PUBLIC_MOCK_MODE)
 
 store/
   bleStore.ts              BLE connection state, node info, network topology
@@ -203,7 +225,7 @@ types/
 
 The app is designed to communicate with a LoRa node that exposes a BLE GATT interface. To connect real hardware:
 
-1. Set `DEV_MOCK = false` in `services/ble.ts`
+1. Run with `EXPO_PUBLIC_MOCK_MODE=false` (or set `MOCK_MODE = false` in `config.ts` permanently)
 2. Update `constants/ble.ts` with your GATT service UUID and characteristic UUIDs:
    - `NODE_INFO` (read) — node ID and firmware version
    - `NETWORK_STATUS` (read + notify) — RSSI, hop count, topology

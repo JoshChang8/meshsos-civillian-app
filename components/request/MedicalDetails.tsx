@@ -346,12 +346,12 @@ export function MedicalDetails({ people, value, onChange }: MedicalDetailsProps)
 
                 {/* Specific need */}
                 <View>
-                  <Text style={styles.sectionLabel}>Specific need</Text>
+                  <Text style={styles.sectionLabel}>Additional Information</Text>
                   <TextInput
                     style={styles.needInput}
                     value={detail?.specificNeed ?? ''}
                     onChangeText={(t) => updateDetail(tier, { specificNeed: t.slice(0, 100) })}
-                    placeholder="Describe specific medical need…"
+                    placeholder="Describe condition and essential needs..."
                     placeholderTextColor={colors.textMuted}
                     multiline
                     textAlignVertical="top"

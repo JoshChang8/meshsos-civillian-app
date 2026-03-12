@@ -203,8 +203,7 @@ export default function RequestScreen() {
   }, [supplyTypes, people, additionalInfo, latitude, longitude]);
 
   const showMedical = supplyTypes.includes('medical');
-  const showAdditionalInfo =
-    supplyTypes.includes('medical') || supplyTypes.includes('other');
+  const showAdditionalInfo = supplyTypes.includes('other');
 
   const showSummary = supplyTypes.length > 0;
 
@@ -285,7 +284,7 @@ export default function RequestScreen() {
                   style={styles.textarea}
                   value={additionalInfo}
                   onChangeText={(v) => { setAdditionalInfo(v); autosaveDraft(); }}
-                  placeholder="Describe your situation, medical conditions, access difficulties…"
+                  placeholder="Describe the supplies you need..."
                   placeholderTextColor={colors.textMuted}
                   multiline
                   numberOfLines={4}

@@ -178,13 +178,13 @@ function MessageCard({ message, styles, colors }: {
   colors: ThemeColors;
 }) {
   const TYPE_COLOR: Record<GatewayMessageType, string> = {
-    info: colors.accent, action: colors.yellow, urgent: colors.red,
+    info: colors.blue, action: colors.yellow, urgent: colors.red,
   };
   const TYPE_DIM: Record<GatewayMessageType, string> = {
-    info: colors.accentDim, action: colors.yellowDim, urgent: colors.redDim,
+    info: colors.blueDim, action: colors.yellowDim, urgent: colors.redDim,
   };
   const TYPE_BORDER: Record<GatewayMessageType, string> = {
-    info: 'rgba(167,139,250,0.3)', action: colors.yellowBorder, urgent: colors.redBorder,
+    info: colors.blueBorder, action: colors.yellowBorder, urgent: colors.redBorder,
   };
   const TYPE_LABEL: Record<GatewayMessageType, string> = {
     info: 'Info', action: 'Action', urgent: 'Urgent',

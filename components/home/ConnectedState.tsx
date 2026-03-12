@@ -181,9 +181,9 @@ function MessageRow({ msg, isLast }: { msg: GatewayMessage; isLast: boolean }) {
   const { colors } = useTheme();
   const row = useMemo(() => makeRowStyles(colors), [colors]);
 
-  const color  = msg.type === 'urgent' ? colors.red    : msg.type === 'action' ? colors.yellow    : colors.accent;
-  const dim    = msg.type === 'urgent' ? colors.redDim : msg.type === 'action' ? colors.yellowDim : colors.accentDim;
-  const border = msg.type === 'urgent' ? colors.redBorder : msg.type === 'action' ? colors.yellowBorder : 'rgba(167,139,250,0.2)';
+  const color  = msg.type === 'urgent' ? colors.red    : msg.type === 'action' ? colors.yellow    : colors.blue;
+  const dim    = msg.type === 'urgent' ? colors.redDim : msg.type === 'action' ? colors.yellowDim : colors.blueDim;
+  const border = msg.type === 'urgent' ? colors.redBorder : msg.type === 'action' ? colors.yellowBorder : colors.blueBorder;
   const label  = msg.type === 'urgent' ? 'Urgent' : msg.type === 'action' ? 'Action' : 'Info';
 
   return (
@@ -314,20 +314,36 @@ function RequestRow({ req, isLast, expanded, onToggle }: {
               <Text style={exp.sectionLabel}>People</Text>
               <View style={exp.row}>
                 {req.people.adults > 0 && (
-                  <Text style={exp.stat}>{req.people.adults} adult{req.people.adults !== 1 ? 's' : ''}</Text>
+                  <Text style={exp.stat}>{req.people.adults} infant{req.people.adults !== 1 ? 's' : ''}</Text>
                 )}
                 {req.people.children > 0 && (
-                  <Text style={exp.stat}>{req.people.children} child{req.people.children !== 1 ? 'ren' : ''}</Text>
+                  <Text style={exp.stat}>{req.people.children} {req.people.children !== 1 ? 'children/adults' : 'child/adult'}</Text>
                 )}
                 {req.people.elderly > 0 && (
-                  <Text style={exp.stat}>{req.people.elderly} elderly</Text>
+                  <Text style={exp.stat}>{req.people.elderly} senior{req.people.elderly !== 1 ? 's' : ''}</Text>
                 )}
               </View>
             </View>
 
+            {req.medicalDetails && (
+              (['adults', 'children', 'elderly'] as const).some(
+                (tier) => req.medicalDetails![tier]?.specificNeed?.trim()
+              )
+            ) && (
+              <View style={exp.section}>
+                <Text style={exp.sectionLabel}>Additional Information</Text>
+                {(['adults', 'children', 'elderly'] as const).map((tier) => {
+                  const need = req.medicalDetails![tier]?.specificNeed?.trim();
+                  if (!need) return null;
+                  const label = tier === 'adults' ? 'Infant (0–2)' : tier === 'children' ? 'Child/Adult (3–59)' : 'Senior (60+)';
+                  return <Text key={tier} style={exp.notes}>{label}: {need}</Text>;
+                })}
+              </View>
+            )}
+
             {req.additionalInfo.trim().length > 0 && (
               <View style={exp.section}>
-                <Text style={exp.sectionLabel}>Notes</Text>
+                <Text style={exp.sectionLabel}>Additional Information</Text>
                 <Text style={exp.notes}>{req.additionalInfo.trim()}</Text>
               </View>
             )}

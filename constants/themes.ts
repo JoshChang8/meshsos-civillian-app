@@ -31,6 +31,11 @@ export interface ThemeColors {
   redDim: string;
   redBorder: string;
 
+  // Info blue
+  blue: string;
+  blueDim: string;
+  blueBorder: string;
+
   // Gateway
   gateway: string;
   gatewayDim: string;
@@ -62,6 +67,10 @@ export const darkTheme: ThemeColors = {
   redDim: 'rgba(248,81,73,0.12)',
   redBorder: 'rgba(248,81,73,0.25)',
 
+  blue: '#388bfd',
+  blueDim: 'rgba(56,139,253,0.15)',
+  blueBorder: 'rgba(56,139,253,0.3)',
+
   gateway: '#f0b429',
   gatewayDim: 'rgba(240,180,41,0.15)',
 };
@@ -92,6 +101,10 @@ export const lightTheme: ThemeColors = {
   red: '#f85149',
   redDim: 'rgba(248,81,73,0.12)',
   redBorder: 'rgba(248,81,73,0.25)',
+
+  blue: '#0969da',
+  blueDim: 'rgba(9,105,218,0.12)',
+  blueBorder: 'rgba(9,105,218,0.25)',
 
   gateway: '#d29922',
   gatewayDim: 'rgba(210,153,34,0.15)',
